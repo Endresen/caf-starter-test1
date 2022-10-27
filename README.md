@@ -43,3 +43,49 @@ trademarks or logos is subject to and must follow
 [Microsoft's Trademark & Brand Guidelines](https://www.microsoft.com/en-us/legal/intellectualproperty/trademarks/usage/general).
 Use of Microsoft trademarks or logos in modified versions of this project must not cause confusion or imply Microsoft sponsorship.
 Any use of third-party trademarks or logos are subject to those third-party's policies.
+
+Fixes:
+On further investigation I was able to fix the azuread_group errors by editing /tf/caf/configuration/level0/launchpad/azuread_groups.tfvars and changing each instance of owner = [[]] to owner = [] and re-running the plan. This implies a bug generating the tfvars files.
+
+------
+I was able to successfully run the plan by editing /tf/caf/configuration/level0/launchpad/keyvaults.tfvars and remming out the object_id for the bootstrap_user in each keyvault. For example:
+
+keyvaults = {
+  level0 = {
+    name               = "l0"
+    resource_group_key = "level0"
+    sku_name           = "premium"
+    tags = {
+      caf_tfstate     = "level0"
+      caf_environment = "contoso"
+    }
+
+    creation_policies = {
+      // <redacted>
+      bootstrap_user = {
+        # object_id          = ""
+        secret_permissions = ["Set", "Get", "List", "Delete", "Purge", "Recover"]
+      }
+      caf_platform_maintainers = {
+        azuread_group_key  = "caf_platform_maintainers"
+        secret_permissions = ["Set", "Get", "List", "Delete", "Purge", "Recover"]
+      }
+      caf_platform_contributors = {
+        azuread_group_key  = "caf_platform_contributors"
+        secret_permissions = ["Get"]
+      }
+    }
+  }
+The first apply failed with a couple of local-exec provisioner errors but re-running the plan and apply succeeded.
+
+-----
+After following both these suggestions was able to run rover with the plan and apply steps:
+in /tf/caf/configuration/level0/launchpad/azuread_groups.tfvars
+
+changing each instance of owner = [[]] to owner = []
+
+and
+
+in /tf/caf/configuration/level0/launchpad/keyvaults.tfvars
+
+remming out the object_id for the bootstrap_user
